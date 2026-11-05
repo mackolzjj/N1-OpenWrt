@@ -1,0 +1,5 @@
+#!/bin/sh
+# The packaged init script is disabled by default; turn honk on at first boot.
+mkdir -p /etc/honk/data
+/etc/init.d/honk enable
+exit 0

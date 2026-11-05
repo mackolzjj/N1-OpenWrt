@@ -95,6 +95,40 @@ jobs:
           mv armsr/armv8/N1/files armsr/armv8/N1/.config openwrt/
           chmod -R 755 openwrt
 
+      - name: Bundle honk (official aarch64 musl static build)
+        run: |
+          set -e
+          files="${GITHUB_WORKSPACE}/openwrt/files"
+          mkdir -p "${files}/usr/bin" "${files}/usr/share/honk" \
+                   "${files}/etc/init.d" "${files}/etc/config" "${files}/etc/uci-defaults"
+
+          # honk-core: official musl static full build with embedded doona UI
+          curl -fsSL --retry 3 \
+            "https://github.com/daeuniverse/honk/releases/download/v0.1.0-beta.5/honk-core-v0.1.0-beta.5-aarch64-unknown-linux-musl-full.tar.gz" \
+            -o /tmp/honk.tar.gz
+          mkdir -p /tmp/honk
+          tar -xzf /tmp/honk.tar.gz -C /tmp/honk
+          honk_bin="$(find /tmp/honk -type f -name honk-core | head -n 1)"
+          test -n "${honk_bin}"
+          install -m 0755 "${honk_bin}" "${files}/usr/bin/honk-core"
+
+          # procd init script + UCI config from the official packaging repo
+          base="https://raw.githubusercontent.com/daeuniverse/openwrt-packages/main/honk/files"
+          curl -fsSL --retry 3 "${base}/honk.init" -o "${files}/etc/init.d/honk"
+          curl -fsSL --retry 3 "${base}/honk.config" -o "${files}/etc/config/honk"
+          chmod 0755 "${files}/etc/init.d/honk"
+
+          # geodata (only needed when rules reference geoip:/geosite:)
+          curl -fsSL --retry 3 \
+            "https://github.com/v2fly/domain-list-community/releases/latest/download/dlc.dat" \
+            -o "${files}/usr/share/honk/geosite.dat"
+          curl -fsSL --retry 3 \
+            "https://github.com/v2fly/geoip/releases/latest/download/geoip.dat" \
+            -o "${files}/usr/share/honk/geoip.dat"
+
+          echo "Bundled honk-core:"
+          ls -lh "${files}/usr/bin/honk-core" "${files}/usr/share/honk/"*.dat
+
       - name: Download package
         working-directory: ./openwrt
         run: |
