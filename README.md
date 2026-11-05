@@ -20,7 +20,8 @@
 ## ✨ 特性
 
 - **纯净底座**：官方 OpenWrt `v25.12.6` + `apk`，无代理组件、无第三方主题，把选择权留给设备端
-- **eBPF 全链路就绪**：`BPF_EVENTS` / `DEBUG_INFO_BTF` / `XDP_SOCKETS` = y，`vmlinux-btf-builtin`，刷机即可自行安装 honk / dae 类程序
+- **eBPF 全链路就绪**：自编译内核开启 `DEBUG_INFO_BTF` / `BPF_JIT` / `FUNCTION_TRACER` / `DYNAMIC_FTRACE`，提供 `/sys/kernel/btf/vmlinux` 与 BPF trampoline，刷机即可自行安装 honk / dae 类程序
+- **内核在打包阶段整体替换**：`armsr/armv8/N1/.config` 里的 `CONFIG_KERNEL_*` 只作用于 OpenWrt 自身编译产物；最终运行内核由 `ophub/amlogic-s9xxx-openwrt` 注入，其选项取决于内核仓库的 `config-6.12`
 - **容器与界面**：`podman` + LuCI、`luci-app-amlogic`（晶晨宝盒）
 - **日常工具**：`bsdtar` / `btrfs-progs` / `f2fs-tools` / `xfs-*` / `pigz` / `tar` / `gawk` / `perl-*` / `chattr` / `lsattr` / `fstrim` / `zoneinfo-asia`
 - **预置调优**：每日 04:00 `fstrim -a`，CPU `performance` 锁 1.512 GHz，晶晨宝盒在线更新已指向本库
@@ -39,10 +40,12 @@ openwrt-install-amlogic      # 需要固化到 eMMC 时执行
 ```bash
 grep PRETTY_NAME /etc/os-release; uname -r
 ls -l /sys/kernel/btf/vmlinux      # 装 honk / dae 前必须存在
+cat /sys/kernel/debug/tracing/available_tracers                    # 应含 function / function_graph
+grep -E 'CONFIG_(FUNCTION_TRACER|DYNAMIC_FTRACE)=y' /boot/config-*   # 两行都应有输出
 uci show amlogic.config | grep -E 'firmware|kernel_branch'
 ```
 
-预期 `OpenWrt 25.12.6`、`6.12.x-ophub`、BTF 文件存在。
+预期 `OpenWrt 25.12.6`、`6.12.x-ophub`、BTF 文件存在；`available_tracers` 不再只有 `nop`（官方内核只有 `nop`），且两个 ftrace 配置项都有输出。**这两条是本仓库区别于默认固件的关键**，缺失说明打包时拉回了官方内核。
 
 > ⚠️ 建议**全新刷写、不保留配置**。本线不含 honk / doona，需要透明代理请在设备端按架构自行安装，或直接刷另一条 [`Phicomm-N1_ImmortalWrt`](https://github.com/mackolzjj/Phicomm-N1_ImmortalWrt)（编译内置）。
 
@@ -65,7 +68,7 @@ uci show amlogic.config | grep -E 'firmware|kernel_branch'
 | --- | --- |
 | 构建机 | `ubuntu-24.04`，`TZ=Asia/Shanghai`；77 个 apt 编译依赖已固化在 workflow 内，不再外部拉取 |
 | `diy.sh` | clone `daeuniverse/openwrt-packages`（仅取 `vmlinux-btf-builtin`）、`ophub/luci-app-amlogic`、`Zerogiven-OpenWRT-Packages/luci-app-podman`；移除 `luci-app-attendedsysupgrade` |
-| 内核选项 | `CONFIG_KERNEL_BPF_EVENTS` / `CONFIG_KERNEL_DEBUG_INFO_BTF` / `CONFIG_KERNEL_XDP_SOCKETS` = y；官方 OpenWrt 无 `CONFIG_BPF_TOOLCHAIN_HOST` 符号，未启用 |
+| 内核选项 | `armsr/armv8/N1/.config` 的 `CONFIG_KERNEL_BPF_EVENTS` / `CONFIG_KERNEL_DEBUG_INFO_BTF` / `CONFIG_KERNEL_XDP_SOCKETS` = y，仅作用于 OpenWrt 自身编译产物；最终运行内核在打包阶段被整体替换，选项取自内核仓库 `config-6.12`（`DEBUG_INFO_BTF` / `FUNCTION_TRACER` / `DYNAMIC_FTRACE` = y）。官方 OpenWrt 无 `CONFIG_BPF_TOOLCHAIN_HOST` 符号，未启用 |
 | 遗留步骤 | workflow 仍安装 `bpf-linker` v0.13.0（原为 honk 编译准备），本线不编译 honk，属无害保留 |
 | 默认网络 | `eth0` 静态 `192.168.2.2/24`，网关 `192.168.2.1`，仅 `lan` 无 wan |
 | 不集成 | `ppp` / `kmod-ppp` / `kmod-mppe`（无 PPPoE）、无线组件（`ENABLE_WIFI_K510=0`）、`luci-app-samba4`、`luci-app-filetransfer`、honk / doona |
@@ -73,16 +76,17 @@ uci show amlogic.config | grep -E 'firmware|kernel_branch'
 
 ### 晶晨宝盒在线更新
 
-`/etc/config/amlogic` 已预置四项指向本库：`firmware_repo = mackolzjj/N1-OpenWrt`、`firmware_tag = OpenWrt`、`firmware_suffix = .img.gz`、`kernel_branch = 6.12`（与 `6.12.y` 对齐）。
+`/etc/config/amlogic` 已预置 6 项在线更新配置：固件 4 项 —— `firmware_repo = mackolzjj/N1-OpenWrt`、`firmware_tag = OpenWrt`、`firmware_suffix = .img.gz`、`kernel_branch = 6.12`（与 `6.12.y` 对齐）；内核 2 项 —— `kernel_path = mackolzjj/ophub-kernel-ftrace`、`kernel_tags = kernel_stable`。
 
-> 这套配置与本库 Release 名天然匹配（`OpenWrt_main_日期` 含 `OpenWrt` 关键字），只要仓库有 Release，列表就有内容；上限 10 个。`amlogic_kernel_path` / `amlogic_kernel_tags` 属于内核在线更新，仍指向 `ophub/kernel`。
+> 这套配置与本库 Release 名天然匹配（`OpenWrt_main_日期` 含 `OpenWrt` 关键字），只要仓库有 Release，列表就有内容；上限 10 个。`kernel_path` / `kernel_tags` 属于内核在线更新，**已指向自编译内核仓库的 `kernel_stable`** —— 在 LuCI 点「在线更新内核」不会拉回 ophub 官方内核、不会丢掉 ftrace；前提是 `mackolzjj/ophub-kernel-ftrace` 的 `kernel_stable` Release 存在。
 
 ### 常见问题
 
 | 现象 | 排查 |
 | --- | --- |
-| 在线更新列表为空 | 先确认仓库已发布 Release；再核对上述四项配置；列表上限 10 个 |
-| `/sys/kernel/btf/vmlinux` 不存在 | 运行时内核由 ophub 打包时替换，BTF 取决于 `kernel_stable`；自行换过内核或刷错镜像会丢失，honk / dae 会直接退出 |
+| 在线更新列表为空 | 先确认仓库已发布 Release；再核对上述 6 项配置；列表上限 10 个 |
+| `/sys/kernel/btf/vmlinux` 不存在 | 运行时内核由 ophub 打包时注入，BTF / ftrace 取决于自编译内核仓库的 `kernel_stable`；自行换过内核、刷错镜像或在 LuCI 更新成官方内核都会丢失，honk / dae 会直接退出 |
+| `available_tracers` 只有 `nop` | 打包时拉回了未开 `FUNCTION_TRACER` 的官方内核；检查 workflow 的 `kernel_repo` 与 `kernel_stable` Release 里的 `6.12.x.tar.gz` |
 | LuCI 无 honk / doona 菜单 | 设计如此，本线不内置；需设备端自装，或改刷 `Phicomm-N1_ImmortalWrt` |
 | 无法拨号 / 无 WiFi | 设计如此，`.config` 明确禁用 ppp 与无线组件 |
 
