@@ -1,0 +1,30 @@
+#!/bin/sh
+# 晶晨宝盒在线更新源：回写为本仓库与自编译内核
+#
+# ophub/amlogic-s9xxx-openwrt 在打包阶段会执行：
+#   remake L913  cp -af "${common_files}/." "${tag_rootfs}"
+# 用自带的 common-files/etc/config/amlogic 覆盖 OpenWrt files/
+# 预置的同名文件，L1076-1081 又用 sed 改写
+# amlogic_firmware_tag / amlogic_kernel_tags / amlogic_kernel_branch。
+# 因此静态模板里的值无法保留，刷机后默认会指向
+# ophub/kernel 与 ophub/amlogic-s9xxx-openwrt。若在插件里点「更新内核」，
+# 官方内核会覆盖自编译内核，丢掉 FUNCTION_TRACER /
+# DYNAMIC_FTRACE / BTF / NFQUEUE，honk 的 UDP trace 随即失效。
+#
+# 本脚本以 zz- 开头，按 ls 字典序排在所有 uci-defaults
+# （含 30_*/99_* 与 luci-amlogic）之后执行；
+# exit 0 后由 /etc/init.d/boot 删除，只在首次启动生效一次。
+# 用户之后仍可在「晶晨宝盒 → 插件设置」自行修改。
+# 不改 shared_fstype / armcpu / write_bootloader 等与更新源无关的项。
+
+uci -q get amlogic.config >/dev/null 2>&1 || uci -q set amlogic.config=amlogic
+
+uci -q set amlogic.config.amlogic_firmware_repo='https://github.com/mackolzjj/N1-OpenWrt'
+uci -q set amlogic.config.amlogic_firmware_tag='OpenWrt'
+uci -q set amlogic.config.amlogic_firmware_suffix='.img.gz'
+uci -q set amlogic.config.amlogic_kernel_path='https://github.com/mackolzjj/ophub-kernel-ftrace'
+uci -q set amlogic.config.amlogic_kernel_tags='kernel_stable'
+uci -q set amlogic.config.amlogic_kernel_branch='6.12'
+uci -q commit amlogic
+
+exit 0

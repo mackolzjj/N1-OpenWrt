@@ -26,7 +26,8 @@
 - **中文开箱可用**：默认 `lang=zh_cn`；`diy.sh` 把补译 `.po` 注入三个第三方 feed 包的 `po/zh_Hans/`，`CONFIG_LUCI_LANG_zh_Hans=y` 让 `luci.mk` 把每个 `.po` 编成同名 `.lmo` 并打进 `luci-i18n-*-zh-cn` apk 包（进 apk 数据库、`apk upgrade` 可升级）。仓库不含任何二进制 `.lmo`，也没有构建期手工复制步骤
 - **默认主题 Argon**：`files/etc/uci-defaults/zz-luci-argon-theme` 在首次启动最后执行，把 `mediaurlbase` 与 4 个 themes 值统一写成 `/luci-static/...` 绝对路径并锁定为 Argon，避免主题包的 uci-defaults 覆盖成 Bootstrap 或写入短名导致 CSS 404；之后仍可在「系统 → 系统 → 语言与界面」切换主题
 - **日常工具**：`bsdtar` / `btrfs-progs` / `f2fs-tools` / `xfs-*` / `pigz` / `tar` / `gawk` / `perl-*` / `chattr` / `lsattr` / `fstrim` / `zoneinfo-asia`
-- **预置调优**：每日 04:00 `fstrim -a`，CPU `performance` 锁 1.512 GHz，晶晨宝盒在线更新已指向本库
+- **在线更新源锁定**：`files/etc/uci-defaults/zz-amlogic-repo` 在首次启动最后把晶晨宝盒的固件 / 内核下载仓库写回 `mackolzjj/N1-OpenWrt` 与 `mackolzjj/ophub-kernel-ftrace`，避免被打包阶段的 ophub 默认值覆盖后误更新为官方内核（会丢失 ftrace / NFQUEUE / BTF）
+- **预置调优**：每日 04:00 `fstrim -a`。注意 `files/etc/config/amlogic` 里的 `ext4` 与 CPU `performance` 锁频模板项会被 ophub 打包默认值覆盖，当前未生效
 
 ## 🚀 快速开始
 
@@ -91,13 +92,14 @@ uci show amlogic.config | grep -E 'firmware|kernel_branch'
 | `/sys/kernel/btf/vmlinux` 不存在 | 运行时内核由 ophub 打包时注入，BTF / ftrace 取决于自编译内核仓库的 `kernel_stable`；自行换过内核、刷错镜像或在 LuCI 更新成官方内核都会丢失，honk / dae 会直接退出 |
 | `available_tracers` 只有 `nop` | 打包时拉回了未开 `FUNCTION_TRACER` 的官方内核；检查 workflow 的 `kernel_repo` 与 `kernel_stable` Release 里的 `6.12.x.tar.gz` |
 | LuCI 无 honk / doona 菜单 | 设计如此，本线不内置；需设备端自装，或改刷 `Phicomm-N1_ImmortalWrt` |
+| 晶晨宝盒「内核的下载仓库」显示 `ophub/kernel` | 打包阶段 `remake` 用 common-files 覆盖 `/etc/config/amlogic` 并 sed 改写 tag；本仓库的 `zz-amlogic-repo` 会在首次启动写回自建仓库。旧固件可手动 `uci set amlogic.config.amlogic_kernel_path=https://github.com/mackolzjj/ophub-kernel-ftrace && uci commit amlogic` |
 | 切换主题后样式丢失 / 中文不生效 | 旧固件的 `/etc/config/luci` 把主题写成 `argon` / `bootstrap` 短名；本仓库已改为 `/luci-static/...` 绝对路径并把 `lang` 修正为 `zh_cn`，重刷即可 |
 | 个别第三方页面仍是英文 | 固件 JS 比上游翻译新；`diy/po/` 下的补译 `.po` 由 `luci.mk` 编进对应中文 apk 包。新增文案时只改 `.po` 文本即可 |
 | 无法拨号 / 无 WiFi | 设计如此，`.config` 明确禁用 ppp 与无线组件 |
 
 ### 自定义编译
 
-`armsr/armv8/N1/.config`（内置包 / 内核选项 / 中文包符号）· `armsr/armv8/diy/diy.sh`（软件源 + 中文 feed 包）· `armsr/armv8/diy/po/`（补译源，纯文本）· `armsr/armv8/N1/files/`（预置 `/etc/config`、首次启动 uci-defaults 与 crontabs）· `armsr/armv8/N1/mk_s905d_n1.sh`（本地打包）· `.github/workflows/armsr_armv8.yml`（触发、内核、Release 规则）。
+`armsr/armv8/N1/.config`（内置包 / 内核选项 / 中文包符号）· `armsr/armv8/diy/diy.sh`（软件源 + 中文 feed 包）· `armsr/armv8/diy/po/`（补译源，纯文本）· `armsr/armv8/N1/files/`（预置 `/etc/config`、首次启动 uci-defaults：`zz-luci-argon-theme` / `zz-amlogic-repo` 与 crontabs）· `armsr/armv8/N1/mk_s905d_n1.sh`（本地打包）· `.github/workflows/armsr_armv8.yml`（触发、内核、Release 规则）。
 
 改动后推送到 `main` / `master` 会触发构建；仅改文档且不想编译时，在 commit body 写 `[skip ci]`。
 
