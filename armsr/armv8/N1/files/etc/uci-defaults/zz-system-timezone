@@ -1,0 +1,21 @@
+#!/bin/sh
+# 系统时区：Asia/Shanghai (CST-8)
+#
+# 不预置 files/etc/config/system：OpenWrt 的 bin/config_generate 只在
+# /etc/config/system 为空时生成默认配置（hostname / NTP timeserver /
+# log_size / urandom_seed / compat_version），预置非空模板会让这些项全部丢失；
+# ophub 打包阶段的 common-files 也可能覆盖 /etc/config 下的文件。
+#
+# 本脚本以 zz- 开头，按 ls 字典序排在所有 uci-defaults 之后执行；
+# exit 0 后由 /etc/init.d/boot 删除，只在首次启动生效一次，用户之后可自行修改。
+# zoneinfo-asia 提供 /usr/share/zoneinfo/Asia/Shanghai；重启 cron 让
+# /etc/crontabs/root 的 fstrim 04:00 按北京时间执行。
+
+uci -q get system.@system[0] >/dev/null 2>&1 || uci -q add system system >/dev/null
+uci -q set system.@system[0].timezone='CST-8'
+uci -q set system.@system[0].zonename='Asia/Shanghai'
+uci -q commit system
+/etc/init.d/system reload >/dev/null 2>&1 || true
+/etc/init.d/cron restart >/dev/null 2>&1 || true
+
+exit 0

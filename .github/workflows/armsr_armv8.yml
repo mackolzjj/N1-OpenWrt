@@ -29,7 +29,8 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@main
+        # 固定版本 tag，不用可变的 @main 分支引用
+        uses: actions/checkout@v6.0.3
 
       # 清盘：删除 runner 预装的 .NET / Android SDK / CodeQL / 数据库等无关组件，腾出约 10~15GB 空间，
       # 避免后续编译内核时磁盘写满（No space left on device）导致构建失败
@@ -130,6 +131,9 @@ jobs:
         with:
           openwrt_path: openwrt/bin/targets/armsr/armv8/*rootfs.tar.gz
           openwrt_board: s905d
+          # 不设置 openwrt_ip：LAN IP 来自 armsr/armv8/N1/files/etc/config/network。
+          # remake L1064 只在没有预置 network 配置时改 bin/config_generate，
+          # 本线即使传 openwrt_ip 也不会改变固件 IP。
           # 自编译内核：开启 CONFIG_FUNCTION_TRACER / DYNAMIC_FTRACE（honk fentry UDP trace）
           kernel_repo: mackolzjj/ophub-kernel-ftrace
           kernel_usage: stable
