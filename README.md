@@ -19,10 +19,11 @@
 
 ## ✨ 特性
 
-- **纯净底座**：官方 OpenWrt `v25.12.6` + `apk`，无代理组件、无第三方主题，把选择权留给设备端
+- **纯净底座**：官方 OpenWrt `v25.12.6` + `apk`，不内置代理组件，预置 Argon 主题与简体中文界面
 - **eBPF 全链路就绪**：自编译内核开启 `DEBUG_INFO_BTF` / `BPF_JIT` / `FUNCTION_TRACER` / `DYNAMIC_FTRACE`，提供 `/sys/kernel/btf/vmlinux` 与 BPF trampoline，刷机即可自行安装 honk / dae 类程序
 - **内核在打包阶段整体替换**：`armsr/armv8/N1/.config` 里的 `CONFIG_KERNEL_*` 只作用于 OpenWrt 自身编译产物；最终运行内核由 `ophub/amlogic-s9xxx-openwrt` 注入，其选项取决于内核仓库的 `config-6.12`
 - **容器与界面**：`podman` + LuCI、`luci-app-amlogic`（晶晨宝盒）
+- **中文开箱可用**：默认 `lang=zh_cn` + Argon 主题；`files/usr/lib/lua/luci/i18n/` 预置 7 个 `.lmo`，覆盖 Argon 主题设置、晶晨宝盒、Podman 与官方 firewall / package-manager 页面
 - **日常工具**：`bsdtar` / `btrfs-progs` / `f2fs-tools` / `xfs-*` / `pigz` / `tar` / `gawk` / `perl-*` / `chattr` / `lsattr` / `fstrim` / `zoneinfo-asia`
 - **预置调优**：每日 04:00 `fstrim -a`，CPU `performance` 锁 1.512 GHz，晶晨宝盒在线更新已指向本库
 
@@ -88,11 +89,12 @@ uci show amlogic.config | grep -E 'firmware|kernel_branch'
 | `/sys/kernel/btf/vmlinux` 不存在 | 运行时内核由 ophub 打包时注入，BTF / ftrace 取决于自编译内核仓库的 `kernel_stable`；自行换过内核、刷错镜像或在 LuCI 更新成官方内核都会丢失，honk / dae 会直接退出 |
 | `available_tracers` 只有 `nop` | 打包时拉回了未开 `FUNCTION_TRACER` 的官方内核；检查 workflow 的 `kernel_repo` 与 `kernel_stable` Release 里的 `6.12.x.tar.gz` |
 | LuCI 无 honk / doona 菜单 | 设计如此，本线不内置；需设备端自装，或改刷 `Phicomm-N1_ImmortalWrt` |
+| 切换主题后样式丢失 / 中文不生效 | 旧固件的 `/etc/config/luci` 把主题写成 `argon` / `bootstrap` 短名；本仓库已改为 `/luci-static/...` 绝对路径并把 `lang` 修正为 `zh_cn`，重刷即可 |
 | 无法拨号 / 无 WiFi | 设计如此，`.config` 明确禁用 ppp 与无线组件 |
 
 ### 自定义编译
 
-`armsr/armv8/N1/.config`（内置包 / 内核选项）· `armsr/armv8/diy/diy.sh`（软件源）· `armsr/armv8/N1/files/`（预置 `/etc/config` 与 crontabs）· `armsr/armv8/N1/mk_s905d_n1.sh`（本地打包）· `.github/workflows/armsr_armv8.yml`（触发、内核、Release 规则）。
+`armsr/armv8/N1/.config`（内置包 / 内核选项）· `armsr/armv8/diy/diy.sh`（软件源）· `armsr/armv8/N1/files/`（预置 `/etc/config`、中文 `.lmo` 与 crontabs）· `armsr/armv8/N1/mk_s905d_n1.sh`（本地打包）· `.github/workflows/armsr_armv8.yml`（触发、内核、Release 规则）。
 
 改动后推送到 `main` / `master` 会触发构建；仅改文档且不想编译时，在 commit body 写 `[skip ci]`。
 

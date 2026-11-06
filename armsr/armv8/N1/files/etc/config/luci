@@ -1,5 +1,5 @@
 config core main
-	option lang 'zh-cn'
+	option lang 'zh_cn'
 	option mediaurlbase '/luci-static/argon'
 	option resourcebase '/luci-static/resources'
 	option fstab '/etc/config/fstab'
@@ -14,7 +14,7 @@ config extern flash_keep
 	option uploads '/lib/uci/upload/'
 
 config internal languages
-	option zh_cn 'zh_cn'
+	option zh_cn '简体中文 (Simplified Chinese)'
 
 config internal sauth
 	option sessionpath '/tmp/luci-sessions'
@@ -24,5 +24,7 @@ config internal ccache
 	option enable '1'
 
 config internal themes
-	option Bootstrap 'bootstrap'
-	option Argon 'argon'
+	option Bootstrap '/luci-static/bootstrap'
+	option Argon '/luci-static/argon'
+	option BootstrapDark '/luci-static/bootstrap-dark'
+	option BootstrapLight '/luci-static/bootstrap-light'
