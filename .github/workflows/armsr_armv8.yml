@@ -89,46 +89,6 @@ jobs:
           ./scripts/feeds update -a
           ./scripts/feeds install -a
 
-      # 中文翻译：feed 包是主路径（见 diy.sh 与 .config），由构建系统编译成
-      # luci-i18n-*-zh-cn apk 并进 apk 数据库。这里从三个插件的官方 Release
-      # 下载语言包 ipk 解包，在构建期生成 .lmo 写入 files/ 作为兜底，防止
-      # make defconfig 丢符号或上游 po 目录变动导致中文缺失。
-      # 仓库不再提交任何二进制 .lmo。
-      - name: 中文语言包（官方 ipk 解包 + 补译 po 编译）
-        run: |
-          set -e
-          DEST="$GITHUB_WORKSPACE/armsr/armv8/N1/files/usr/lib/lua/luci/i18n"
-          PO_DIR="$GITHUB_WORKSPACE/armsr/armv8/diy/po"
-          mkdir -p "$DEST" /tmp/luci-i18n
-          cd /tmp/luci-i18n
-
-          urls="
-          https://github.com/jerrykuku/luci-theme-argon/releases/download/v3.1.3/luci-i18n-argon-config-zh-cn_v3.1.3_all.ipk
-          https://github.com/ophub/luci-app-amlogic/releases/download/26.10.2801-js/luci-i18n-amlogic-zh-cn_0_all.ipk
-          https://github.com/Zerogiven-OpenWRT-Packages/luci-app-podman/releases/download/v2.3.4/luci-i18n-podman-zh-cn_26.154.19495.91f3cd2_all_24.10.ipk
-          "
-          for url in $urls; do
-            name="${url##*/}"
-            if curl -fsSL --retry 3 -o "$name" "$url"; then
-              rm -rf "x_$name"
-              mkdir "x_$name"
-              tar -xzf "$name" -C "x_$name" ./data.tar.gz
-              tar -xzf "x_$name/data.tar.gz" -C "x_$name"
-              find "x_$name" -name '*.lmo' -exec cp -f {} "$DEST/" \;
-            else
-              echo "::warning:: 中文语言包下载失败：$name（feed 编译仍会提供翻译）"
-            fi
-          done
-
-          # 上游 po 落后于固件 JS，补译条目在构建期由 po2lmo.py 编译成 .lmo
-          python3 "$GITHUB_WORKSPACE/armsr/armv8/diy/po2lmo.py" \
-            "$PO_DIR/amlogic-extra.po" "$DEST/amlogic-extra.zh-cn.lmo"
-          python3 "$GITHUB_WORKSPACE/armsr/armv8/diy/po2lmo.py" \
-            "$PO_DIR/podman-extra.po" "$DEST/podman-extra.zh-cn.lmo"
-
-          echo "== 构建期生成的中文语言包 =="
-          ls -l "$DEST"
-
       - name: Load N1 custom config
         run: |
           rm -rf openwrt/files openwrt/.config
@@ -140,7 +100,7 @@ jobs:
         run: |
           make defconfig
           echo "== 已启用的简体中文翻译包 =="
-          grep -E '^CONFIG_PACKAGE_luci-i18n-.*-zh-cn=y' .config || echo "::warning:: 没有 zh-cn 翻译包被启用，将依赖 files/ 的构建期兜底"
+          grep -E '^CONFIG_PACKAGE_luci-i18n-.*-zh-cn=y' .config || echo "::warning:: 没有 zh-cn 翻译包被启用，请检查 diy.sh 的 po/zh_Hans 与 .config 的 CONFIG_LUCI_LANG_zh_Hans"
           make download -j$(( $(nproc) * 2 ))
 
       - name: 安装 bpf-linker（honk 编译必需）

@@ -16,6 +16,7 @@ sed -i '/luci-app-attendedsysupgrade/d' feeds/luci/collections/luci/Makefile
 # 三个上游仓库都自带 po/zh_Hans，这里确保它们确实进了 feed（上游改目录结构或
 # feeds update 清理时不会静默丢失），并把固件 JS 新增、上游 po 尚未收录的条目
 # 以第二个 .po 注入同一目录 —— luci.mk 会额外编出 *-extra.zh-cn.lmo。
+# 这是中文翻译的唯一路径：不下载官方 ipk，也不在构建期手工复制 .lmo。
 DIY_PO="$GITHUB_WORKSPACE/armsr/armv8/diy/po"
 
 ensure_zh_hans() {
@@ -25,7 +26,7 @@ ensure_zh_hans() {
         cp -rf "$src/po/zh_Hans" "$pkg/po/"
     fi
     if [ ! -d "$pkg/po/zh_Hans" ]; then
-        echo "::warning:: $pkg 缺 po/zh_Hans，中文包可能不生成（workflow 有 ipk 兜底）"
+        echo "::warning:: $pkg 缺 po/zh_Hans，该插件中文包不会生成，请检查上游 po 目录结构"
     fi
 }
 
