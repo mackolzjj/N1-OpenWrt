@@ -24,6 +24,7 @@
 - **内核在打包阶段整体替换**：`armsr/armv8/N1/.config` 里的 `CONFIG_KERNEL_*` 只作用于 OpenWrt 自身编译产物；最终运行内核由 `ophub/amlogic-s9xxx-openwrt` 注入，其选项取决于内核仓库的 `config-6.12`
 - **容器与界面**：`podman` + LuCI、`luci-app-amlogic`（晶晨宝盒）
 - **中文开箱可用**：默认 `lang=zh_cn` + Argon 主题；`files/usr/lib/lua/luci/i18n/` 预置 7 个 `.lmo`，覆盖 Argon 主题设置、晶晨宝盒、Podman 与官方 firewall / package-manager 页面
+- **默认主题 Argon**：`files/etc/uci-defaults/zz-luci-argon-theme` 在首次启动最后执行，把 `mediaurlbase` 与 4 个 themes 值统一写成 `/luci-static/...` 绝对路径并锁定为 Argon，避免主题包的 uci-defaults 覆盖成 Bootstrap 或写入短名导致 CSS 404；之后仍可在「系统 → 系统 → 语言与界面」切换主题
 - **日常工具**：`bsdtar` / `btrfs-progs` / `f2fs-tools` / `xfs-*` / `pigz` / `tar` / `gawk` / `perl-*` / `chattr` / `lsattr` / `fstrim` / `zoneinfo-asia`
 - **预置调优**：每日 04:00 `fstrim -a`，CPU `performance` 锁 1.512 GHz，晶晨宝盒在线更新已指向本库
 
@@ -94,7 +95,7 @@ uci show amlogic.config | grep -E 'firmware|kernel_branch'
 
 ### 自定义编译
 
-`armsr/armv8/N1/.config`（内置包 / 内核选项）· `armsr/armv8/diy/diy.sh`（软件源）· `armsr/armv8/N1/files/`（预置 `/etc/config`、中文 `.lmo` 与 crontabs）· `armsr/armv8/N1/mk_s905d_n1.sh`（本地打包）· `.github/workflows/armsr_armv8.yml`（触发、内核、Release 规则）。
+`armsr/armv8/N1/.config`（内置包 / 内核选项）· `armsr/armv8/diy/diy.sh`（软件源）· `armsr/armv8/N1/files/`（预置 `/etc/config`、中文 `.lmo`、首次启动 uci-defaults 与 crontabs）· `armsr/armv8/N1/mk_s905d_n1.sh`（本地打包）· `.github/workflows/armsr_armv8.yml`（触发、内核、Release 规则）。
 
 改动后推送到 `main` / `master` 会触发构建；仅改文档且不想编译时，在 commit body 写 `[skip ci]`。
 

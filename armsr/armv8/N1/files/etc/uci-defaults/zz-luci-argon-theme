@@ -1,0 +1,18 @@
+#!/bin/sh
+# 固件默认主题：Argon
+#
+# 官方 30_luci-theme-bootstrap 与第三方 30_luci-theme-argon 在首次启动都会改写
+# /etc/config/luci；后者只在 themes.Argon 缺失时才顺带设置 main.mediaurlbase，
+# 模板里预置了 Argon 反而会让它跳过。主题包还可能写入 'argon' 这样的短名，
+# 导致 CSS 请求 404。此脚本以 zz- 开头，按 ls 字典序排在所有 uci-defaults 之后，
+# 执行完即被 /etc/init.d/boot 删除，只在首次启动生效一次；
+# 用户之后仍可在「系统 → 系统 → 语言与界面」自由切换到 Bootstrap 等主题。
+
+uci -q set luci.themes.Argon=/luci-static/argon
+uci -q set luci.themes.Bootstrap=/luci-static/bootstrap
+uci -q set luci.themes.BootstrapDark=/luci-static/bootstrap-dark
+uci -q set luci.themes.BootstrapLight=/luci-static/bootstrap-light
+uci -q set luci.main.mediaurlbase=/luci-static/argon
+uci -q commit luci
+
+exit 0
