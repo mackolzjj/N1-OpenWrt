@@ -14,10 +14,8 @@ sed -i '/luci-app-attendedsysupgrade/d' feeds/luci/collections/luci/Makefile
 # luci.mk 会扫描包目录下的 po/<BCP47>/*.po，自动生成 luci-i18n-<name>-zh-cn
 # 包；.config 里的 CONFIG_LUCI_LANG_zh_Hans=y 负责把它们默认启用。
 # 三个上游仓库都自带 po/zh_Hans，这里确保它们确实进了 feed（上游改目录结构或
-# feeds update 清理时不会静默丢失），并把固件 JS 新增、上游 po 尚未收录的条目
-# 以第二个 .po 注入同一目录 —— luci.mk 会额外编出 *-extra.zh-cn.lmo。
+# feeds update 清理时不会静默丢失）。
 # 这是中文翻译的唯一路径：不下载官方 ipk，也不在构建期手工复制 .lmo。
-DIY_PO="$GITHUB_WORKSPACE/armsr/armv8/diy/po"
 
 ensure_zh_hans() {
     pkg="$1"; src="$2"
@@ -33,11 +31,6 @@ ensure_zh_hans() {
 ensure_zh_hans feeds/luci/applications/luci-app-amlogic clone/amlogic/luci-app-amlogic
 ensure_zh_hans feeds/luci/applications/luci-app-podman  ""
 ensure_zh_hans feeds/luci/themes/luci-theme-argon     clone/argon
-
-mkdir -p feeds/luci/applications/luci-app-amlogic/po/zh_Hans \
-         feeds/luci/applications/luci-app-podman/po/zh_Hans
-cp -f "$DIY_PO/amlogic-extra.po" feeds/luci/applications/luci-app-amlogic/po/zh_Hans/
-cp -f "$DIY_PO/podman-extra.po"  feeds/luci/applications/luci-app-podman/po/zh_Hans/
 
 echo "== zh_Hans 翻译源文件 =="
 find feeds/luci/applications/luci-app-amlogic/po/zh_Hans \
