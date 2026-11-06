@@ -11,7 +11,7 @@
 
 </div>
 
-> 不含 PPPoE / WiFi，也**不内置 honk / dae / doona** —— 只准备 eBPF / BTF / ftrace / NFQUEUE 内核底座，透明代理自行安装。
+> 不含 PPPoE / WiFi，也**不内置 honk / dae / doona** —— 只准备 eBPF / BTF / ftrace / NFQUEUE，透明代理自行安装。
 
 ## 固件内容
 
