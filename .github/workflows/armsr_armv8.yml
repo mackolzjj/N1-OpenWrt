@@ -107,23 +107,9 @@ jobs:
           grep -E '^CONFIG_PACKAGE_luci-i18n-.*-zh-cn=y' .config || echo "::warning:: 没有 zh-cn 翻译包被启用，请检查 diy.sh 的 po/zh_Hans 与 .config 的 CONFIG_LUCI_LANG_zh_Hans"
           make download -j$(( $(nproc) * 2 ))
 
-      - name: 安装 bpf-linker（honk 编译必需）
-        run: |
-          command -v zstd >/dev/null 2>&1 || sudo apt-get -qq install -y zstd
-          mkdir -p "$HOME/.cargo/bin"
-          curl -fsSL --retry 3 \
-            "https://github.com/aya-rs/bpf-linker/releases/download/v0.13.0/bpf-linker-x86_64-unknown-linux-musl.tar.zst" \
-            -o "$HOME/bpf-linker.tar.zst"
-          tar --zstd -xf "$HOME/bpf-linker.tar.zst" -C "$HOME/.cargo/bin"
-          rm -f "$HOME/bpf-linker.tar.zst"
-          chmod +x "$HOME/.cargo/bin/bpf-linker"
-          "$HOME/.cargo/bin/bpf-linker" --version
-          echo "PATH=$HOME/.cargo/bin:$PATH" >> "$GITHUB_ENV"
-
       - name: Compile N1 firmware
         working-directory: ./openwrt
         run: |
-          export PATH="$HOME/.cargo/bin:$PATH"
           ccache -M 5G
           ccache -z
           make -j$(( $(nproc) + 1 )) || make -j$((nproc)) V=s
