@@ -28,6 +28,8 @@ env:
 jobs:
   build:
     runs-on: ubuntu-24.04
+    # 默认 360 分钟会被 GitHub 硬杀且不留日志；显式设上限便于失败时还能拿到 artifact
+    timeout-minutes: 300
 
     steps:
       - name: Checkout
@@ -97,7 +99,7 @@ jobs:
         run: |
           rm -rf openwrt/files openwrt/.config
           mv armsr/armv8/N1/files armsr/armv8/N1/.config openwrt/
-          chmod -R 755 openwrt
+          chmod -R 755 openwrt/files   # 只需要 uci-defaults 可执行，别把整棵源码树都设成 755
 
       - name: Download package
         working-directory: ./openwrt
@@ -116,7 +118,9 @@ jobs:
           ccache -s
 
       - name: Package N1 firmware
-        uses: ophub/amlogic-s9xxx-openwrt@main
+        # 固定到 commit：该仓库只有 v0.1.0 / kernel_stable 两个 tag，kernel_stable 是内核 release 用的，
+        # 不是 action 版本，所以用 sha 固定。升级时改这一行（并跑一次验证）。
+        uses: ophub/amlogic-s9xxx-openwrt@30551662cadb27d89c92e4f470337fff5d7d30ab
         with:
           openwrt_path: openwrt/bin/targets/armsr/armv8/*rootfs.tar.gz
           openwrt_board: s905d
@@ -128,7 +132,7 @@ jobs:
           kernel_usage: stable
           openwrt_kernel: 6.12.y
           auto_kernel: 'true'
-          openwrt_size: 256/1024
+          openwrt_size: 256/4096
           builder_name: Mackol
 
       - name: Upload firmware to release
@@ -140,3 +144,15 @@ jobs:
       - name: Delete old releases
         run: |
           gh release list --repo ${{ github.repository }} --limit 100 --json tagName --jq '.[].tagName' | tail -n +11 | while read -r tag; do gh release delete "$tag" --repo ${{ github.repository }} --cleanup-tag --yes; done
+
+      # 编译失败时把 OpenWrt 的日志捞出来，否则只能登 GitHub 看（这次的 11-12/11-16 失败就没法查）
+      - name: Upload build logs on failure
+        if: ${{ failure() && !cancelled() }}
+        uses: actions/upload-artifact@v7.0.2
+        with:
+          name: build-logs-${{ github.run_id }}
+          path: |
+            openwrt/logs/
+            openwrt/bin/targets/armsr/armv8/*.log
+          if-no-files-found: warn
+          retention-days: 7
