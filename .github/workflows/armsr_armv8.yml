@@ -7,7 +7,7 @@ on:
       - main
       - master
   schedule:
-    - cron: "0 0 * * 0"   # 每周日 00:00 UTC = 08:00 北京时间（7 天一次）
+    - cron: "0 0 */6 * *"   # 每 6 天 00:00 UTC = 08:00 北京时间（落在 1/7/13/19/25/31 号）
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
