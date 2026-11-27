@@ -112,7 +112,7 @@ jobs:
       - name: Compile N1 firmware
         working-directory: ./openwrt
         run: |
-          ccache -M 5G
+          ccache -M 3G   # 单仓库缓存上限 10GB，ccache 5G 会挤掉 dl/cargo
           ccache -z
           make -j$(( $(nproc) + 1 )) || make -j$((nproc)) V=s
           ccache -s
