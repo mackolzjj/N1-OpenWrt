@@ -137,13 +137,29 @@ jobs:
 
       - name: Upload firmware to release
         run: |
-          tag="OpenWrt_${{ github.ref_name }}_${{ env.FILE_DATE }}"
+          set -e
+          # ophub 产出 openwrt_amlogic_s905d_k<内核>_<YYYY.MM.DD>.img.gz，发布前改名。
+          # 名字里 s905d 两侧必须是下划线：luci-app-amlogic 的 amlogic_check_firmware.sh
+          # 用 awk 匹配 /releases/download/[^"]*_<board>_[^"]*k<内核>\.[0-9]+[^"]*<suffix>，
+          # 改成连字符会让设备端「在线更新」找不到包。
+          src=$(ls "$PACKAGED_OUTPUTPATH"/*.img.gz | head -1)
+          [ -n "$src" ] || { echo "::error::没有找到 .img.gz 产物"; exit 1; }
+          kver=$(basename "$src" | sed -nE 's/.*_k([0-9]+\.[0-9]+\.[0-9]+)_.*/\1/p')
+          [ -n "$kver" ] || { echo "::error::无法从 $(basename "$src") 解析内核版本"; exit 1; }
+          asset="$PACKAGED_OUTPUTPATH/openwrt-armsr-armv8-generic_s905d_k${kver}_${FILE_DATE}.img.gz"
+          [ "$src" = "$asset" ] || mv -f "$src" "$asset"
+          case "$(basename "$asset")" in
+            *_s905d_*k"$kver"*.img.gz) : ;;
+            *) echo "::error::资产名 $(basename "$asset") 不满足晶晨宝盒的匹配规则"; exit 1 ;;
+          esac
+          echo "发布资产: $(basename "$asset")  $(stat -c %s "$asset") bytes"
+          tag="OpenWrt_${{ github.ref_name }}_${FILE_DATE}"
           gh release create $tag --repo ${{ github.repository }} --title "$tag" --notes "$(printf '首次使用建议全新刷写\n* 基本信息\nIP: 192.168.2.2\n账户: root\n密码: password')" 2> /dev/null || true
-          gh release upload $tag ${{ env.PACKAGED_OUTPUTPATH }}/*.img.gz --repo ${{ github.repository }} --clobber
+          gh release upload $tag "$asset" --repo ${{ github.repository }} --clobber
 
       - name: Delete old releases
         run: |
-          gh release list --repo ${{ github.repository }} --limit 100 --json tagName --jq '.[].tagName' | tail -n +11 | while read -r tag; do gh release delete "$tag" --repo ${{ github.repository }} --cleanup-tag --yes; done
+          gh release list --repo ${{ github.repository }} --limit 100 --json tagName --jq '.[].tagName' | tail -n +6 | while read -r tag; do gh release delete "$tag" --repo ${{ github.repository }} --cleanup-tag --yes; done
 
       # 编译失败时把 OpenWrt 的日志捞出来，否则只能登 GitHub 看（这次的 11-12/11-16 失败就没法查）
       - name: Upload build logs on failure
